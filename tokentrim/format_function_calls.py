@@ -38,9 +38,7 @@ def format_default(schema):
 def format_object(schema, indent, json_schema):
   result = "{\n"
   if "properties" not in schema or len(schema["properties"]) == 0:
-    if schema.get("additionalProperties", False):
-      return "object"
-    return None
+    return "object" if schema.get("additionalProperties", False) else None
   for key, value in schema["properties"].items():
     value = resolve_ref(value, json_schema)
     value_rendered = format_schema(value, indent + 1, json_schema)
@@ -78,7 +76,7 @@ def format_tool(tool):
   result = f"// {tool['description']}\ntype {tool['name']} = ("
   formatted = format_object(json_schema, 0, json_schema)
   if formatted is not None:
-    result += "_: " + formatted
+    result += f"_: {formatted}"
   result += ") => any;\n\n"
   return result
 

@@ -8,7 +8,7 @@ MAX_ITERATIONS = 12
 
 def get_encoding(model):
   # Attempt to get the encoding for the specified model
-  if model == None:
+  if model is None:
     encoding = tiktoken.get_encoding("cl100k_base")
   else:
     try:
@@ -27,13 +27,12 @@ def num_tokens_from_messages(messages: List[Dict[str, Any]], model) -> int:
   encoding = get_encoding(model)
 
   # Token handling specifics for different model types
-  if model == None:
+  if model is None:
     # Slightly raised numbers for an unknown model / prompt template
     # In the future this should be customizable
     tokens_per_message = 4
     tokens_per_name = 2
-  else:
-    if model in {
+  elif model in {
         "gpt-3.5-turbo-0613",
         "gpt-3.5-turbo-16k-0613",
         "gpt-4-0314",
@@ -41,20 +40,20 @@ def num_tokens_from_messages(messages: List[Dict[str, Any]], model) -> int:
         "gpt-4-0613",
         "gpt-4-32k-0613",
     }:
-      tokens_per_message = 3
-      tokens_per_name = 1
-    elif model == "gpt-3.5-turbo-0301":
-      tokens_per_message = 4
-      tokens_per_name = -1
-    elif "gpt-3.5-turbo" in model:
-      return num_tokens_from_messages(messages, model="gpt-3.5-turbo-0613")
-    elif "gpt-4" in model:
-      return num_tokens_from_messages(messages, model="gpt-4-0613")
-    else:
-      # Slightly raised numbers for an unknown model / prompt template
-      # In the future this should be customizable
-      tokens_per_message = 4
-      tokens_per_name = 2
+    tokens_per_message = 3
+    tokens_per_name = 1
+  elif model == "gpt-3.5-turbo-0301":
+    tokens_per_message = 4
+    tokens_per_name = -1
+  elif "gpt-3.5-turbo" in model:
+    return num_tokens_from_messages(messages, model="gpt-3.5-turbo-0613")
+  elif "gpt-4" in model:
+    return num_tokens_from_messages(messages, model="gpt-4-0613")
+  else:
+    # Slightly raised numbers for an unknown model / prompt template
+    # In the future this should be customizable
+    tokens_per_message = 4
+    tokens_per_name = 2
 
   # Calculate the number of tokens
   num_tokens = 0
@@ -67,8 +66,6 @@ def num_tokens_from_messages(messages: List[Dict[str, Any]], model) -> int:
           num_tokens += tokens_per_name
       except:
         print(f"Failed to parse '{key}'.")
-        pass
-
   num_tokens += 3
   return num_tokens
 
@@ -98,7 +95,7 @@ def shorten_message_to_fit_limit(message: Dict[str, Any], tokens_needed: int,
     left_half = encoding.decode(encoding.encode(content[:half_length]))
     right_half = encoding.decode(encoding.encode(content[-half_length:]))
 
-    trimmed_content = left_half + '...' + right_half
+    trimmed_content = f'{left_half}...{right_half}'
     message["content"] = trimmed_content
     content = trimmed_content
 
@@ -130,7 +127,7 @@ def trim(
     """
 
   # Initialize max_tokens
-  if max_tokens == None:
+  if max_tokens is None:
 
     # Check if model is valid
     if model not in MODEL_MAX_TOKENS:
@@ -180,18 +177,15 @@ def trim(
       final_messages_tokens = num_tokens_from_messages(final_messages, model)
       tokens_remaining = max_tokens - final_messages_tokens
 
-      # If we have some tokens to play with, we can try trimming the top message.
-      if True:
+      # If adding the next message exceeds the token limit, try trimming it
+      # (This only works for non-function call messages)
+      if "function_call" not in message:
+        shorten_message_to_fit_limit(message, tokens_remaining, model)
 
-        # If adding the next message exceeds the token limit, try trimming it
-        # (This only works for non-function call messages)
-        if "function_call" not in message:
-          shorten_message_to_fit_limit(message, tokens_remaining, model)
-
-        # If the trimmed message can fit, add it
-        if num_tokens_from_messages(
-          [message], model) + final_messages_tokens <= max_tokens:
-          final_messages = [message] + final_messages
+      # If the trimmed message can fit, add it
+      if num_tokens_from_messages(
+        [message], model) + final_messages_tokens <= max_tokens:
+        final_messages = [message] + final_messages
 
       break
 
